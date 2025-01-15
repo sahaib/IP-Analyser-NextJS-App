@@ -93,13 +93,13 @@ export function Hero() {
                 Advanced IP analysis tools for security professionals and network administrators.
               </p>
               <div className="flex space-x-4">
-                <Link href="https://github.com" className="text-muted-foreground hover:text-foreground">
+                <Link href="https://github.com/sahaibsingh" className="text-muted-foreground hover:text-foreground">
                   <Github className="h-5 w-5" />
                 </Link>
-                <Link href="https://twitter.com" className="text-muted-foreground hover:text-foreground">
+                <Link href="https://twitter.com/imsahaib" className="text-muted-foreground hover:text-foreground">
                   <Twitter className="h-5 w-5" />
                 </Link>
-                <Link href="https://linkedin.com" className="text-muted-foreground hover:text-foreground">
+                <Link href="https://linkedin.com/in/sahaibsingh" className="text-muted-foreground hover:text-foreground">
                   <Linkedin className="h-5 w-5" />
                 </Link>
               </div>

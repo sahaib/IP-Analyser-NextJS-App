@@ -1,6 +1,7 @@
 "use client"
 
 import { Navbar } from '@/app/components/Navbar'
+import { Hero } from '@/app/components/Hero'
 import { IPInput } from '@/app/components/IPInput'
 import { IPDataTable } from '@/app/components/IPDataTable'
 import { StatisticalSummary } from '@/app/components/StatisticalSummary'
@@ -85,11 +86,8 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex flex-col dark:bg-background">
         <Navbar />
-        <main className="flex-grow container mx-auto px-6 py-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold">Welcome to IP Analyzer</h1>
-            <p className="mt-4 text-lg text-muted-foreground">Please sign in to continue</p>
-          </div>
+        <main className="flex-grow container mx-auto px-6">
+          <Hero />
         </main>
       </div>
     )
