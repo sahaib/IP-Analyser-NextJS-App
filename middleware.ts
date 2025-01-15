@@ -10,8 +10,8 @@ const redis = new Redis({
 });
 
 // Rate limiter configurations
-const API_RATE_LIMIT = 5; // requests
-const TIME_WINDOW = 40; // seconds
+const API_RATE_LIMIT = 20; // Increased from 5 to 20 requests
+const TIME_WINDOW = 120; // Increased from 40 to 120 seconds
 const TOKEN_EXPIRY = 30; // seconds
 const MAX_LOGIN_ATTEMPTS = 3;
 
@@ -24,7 +24,13 @@ export default authMiddleware({
     // Check if IP is blocked
     const isBlocked = await redis.get(blockKey);
     if (isBlocked) {
-      return new Response("Too many attempts. Please try again later.", { status: 429 });
+      return new Response("Too many attempts. Please try again later.", { 
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': '120'
+        }
+      });
     }
 
     // Rate limiting logic for API routes
@@ -41,8 +47,26 @@ export default authMiddleware({
         if (attempts > MAX_LOGIN_ATTEMPTS) {
           await redis.setex(blockKey, TOKEN_EXPIRY, "1");
         }
-        return new Response("Rate limit exceeded", { status: 429 });
+        return new Response(JSON.stringify({
+          error: "Rate limit exceeded",
+          retryAfter: TIME_WINDOW,
+          limit: API_RATE_LIMIT,
+          remaining: 0
+        }), { 
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': TIME_WINDOW.toString()
+          }
+        });
       }
+
+      // Add rate limit headers
+      const response = NextResponse.next();
+      response.headers.set('X-RateLimit-Limit', API_RATE_LIMIT.toString());
+      response.headers.set('X-RateLimit-Remaining', (API_RATE_LIMIT - count).toString());
+      response.headers.set('X-RateLimit-Reset', TIME_WINDOW.toString());
+      return response;
     }
 
     return NextResponse.next();

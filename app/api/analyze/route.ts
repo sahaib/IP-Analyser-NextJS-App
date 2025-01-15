@@ -9,6 +9,8 @@ const CLAUDE_API_ENDPOINT = 'https://api.anthropic.com/v1/messages'
 const RATE_LIMIT = 1000 // Maximum IPs per request
 const CLAUDE_RATE_LIMIT = 10 // Maximum Claude API calls per minute
 const CLAUDE_WINDOW = 60 // 1 minute window
+const TIMEOUT = 30000; // 30 seconds timeout
+const BATCH_SIZE = 5; // Process 5 IPs at a time
 
 // Initialize Redis client
 const redis = new Redis({
@@ -35,9 +37,20 @@ async function checkClaudeRateLimit(userId: string): Promise<boolean> {
   return count <= CLAUDE_RATE_LIMIT
 }
 
-async function getIPInfo(ip: string) {
+interface IPInfo {
+  country: string;
+  region: string;
+  city: string;
+  isp: string;
+  org: string;
+  as: string;
+  lat?: number;
+  lon?: number;
+}
+
+async function getIPInfo(ip: string): Promise<IPInfo | null> {
   try {
-    const response = await axios.get(`${IP_API_ENDPOINT}/${ip}?fields=status,message,country,regionName,city,lat,lon,isp,org,as`)
+    const response = await axios.get(`${IP_API_ENDPOINT}/${ip}?fields=status,message,country,regionName,city,lat,lon,isp,org,as`);
     if (response.data.status === 'success') {
       return {
         country: response.data.country || 'N/A',
@@ -48,12 +61,12 @@ async function getIPInfo(ip: string) {
         as: response.data.as || 'N/A',
         lat: response.data.lat,
         lon: response.data.lon
-      }
+      };
     }
-    return null
+    return null;
   } catch (error) {
-    console.error(`Error getting IP info for ${ip}:`, error)
-    return null
+    console.error(`Error getting IP info for ${ip}:`, error);
+    return null;
   }
 }
 
@@ -134,99 +147,69 @@ Base your analysis on known threat intelligence sources and security databases. 
   }
 }
 
+interface IPAnalysisResult {
+  ipInfo: IPInfo | null;
+  reputation: Awaited<ReturnType<typeof analyzeIPWithClaude>>;
+}
+
+async function analyzeIP(ip: string, userId: string): Promise<IPAnalysisResult> {
+  const [ipInfo, reputation] = await Promise.all([
+    getIPInfo(ip),
+    analyzeIPWithClaude(ip, userId)
+  ]);
+
+  return {
+    ipInfo,
+    reputation
+  };
+}
+
 export async function POST(req: Request) {
   try {
-    // Get auth session
-    const { userId } = auth()
+    const { ips } = await req.json();
+    const { userId } = auth();
+
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Unauthorized - User not authenticated' },
+        { status: 401 }
+      );
     }
-
-    // Validate temporary token
-    const tempToken = req.headers.get('X-Temp-Token')
-    if (!tempToken || !(await validateTempToken(userId, tempToken))) {
-      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 403 })
-    }
-
-    const { ips } = await req.json()
 
     if (!Array.isArray(ips) || ips.length === 0) {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
-    }
-
-    if (ips.length > RATE_LIMIT) {
       return NextResponse.json(
-        { error: `Too many IPs. Maximum allowed is ${RATE_LIMIT}.` },
+        { error: 'Invalid request - ips must be a non-empty array' },
         { status: 400 }
-      )
+      );
     }
 
-    const validIPs = ips.filter(isValidIP)
-
-    if (validIPs.length === 0) {
-      return NextResponse.json(
-        { error: 'No valid IP addresses provided' },
-        { status: 400 }
-      )
-    }
-
-    // Process IPs individually
-    const results = []
-    for (const ip of validIPs) {
-      try {
-        // Get IP info
-        const ipInfo = await getIPInfo(ip)
-        
-        // Get reputation info using Claude
-        const reputation = await analyzeIPWithClaude(ip, userId)
-
-        if (ipInfo) {
-          results.push({
-            ip,
-            ...ipInfo,
-            reputation
-          })
-        } else {
-          results.push({
-            ip,
-            country: 'N/A',
-            region: 'N/A',
-            city: 'N/A',
-            isp: 'N/A',
-            org: 'N/A',
-            as: 'N/A',
-            lat: undefined,
-            lon: undefined,
-            reputation
-          })
-        }
-
-        // Add delay between requests to respect rate limit
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      } catch (error) {
-        console.error(`Error processing IP ${ip}:`, error)
-        results.push({
+    const results = [];
+    for (let i = 0; i < ips.length; i += BATCH_SIZE) {
+      const batch = ips.slice(i, i + BATCH_SIZE);
+      const batchPromises = batch.map(ip => {
+        return Promise.race([
+          analyzeIP(ip, userId).then(result => ({ ip, ...result, status: 'success' })),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Analysis timeout')), TIMEOUT)
+          )
+        ]).catch(error => ({
           ip,
-          country: 'N/A',
-          region: 'N/A',
-          city: 'N/A',
-          isp: 'N/A',
-          org: 'N/A',
-          as: 'N/A',
-          lat: undefined,
-          lon: undefined,
-          reputation: null
-        })
-      }
+          error: error.message,
+          status: 'error'
+        }));
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
     }
 
-    return NextResponse.json({ results })
+    return NextResponse.json({ results });
   } catch (error) {
-    console.error('Error processing IP addresses:', error)
+    console.error('Error in POST:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }
 
