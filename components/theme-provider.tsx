@@ -5,10 +5,7 @@ import { ThemeProvider as NextThemesProvider } from "next-themes"
 
 export function ThemeProvider({
   children,
-  attribute = "class",
-  defaultTheme = "system",
-  enableSystem = true,
-  disableTransitionOnChange = false,
+  ...props
 }: {
   children: React.ReactNode
   attribute?: "class" | "data-theme"
@@ -17,12 +14,7 @@ export function ThemeProvider({
   disableTransitionOnChange?: boolean
 }) {
   return (
-    <NextThemesProvider
-      attribute={attribute}
-      defaultTheme={defaultTheme}
-      enableSystem={enableSystem}
-      disableTransitionOnChange={disableTransitionOnChange}
-    >
+    <NextThemesProvider {...props}>
       {children}
     </NextThemesProvider>
   )
