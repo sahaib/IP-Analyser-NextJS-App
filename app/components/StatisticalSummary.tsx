@@ -1,29 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-interface IPData {
-  ip: string
-  country: string
-  region: string
-  city: string
-  isp: string
-  org: string
-  as: string
-  reputation?: {
-    status: 'clean' | 'suspicious' | 'malicious'
-    confidence_score?: number
-    sources?: string[]
-    last_reported?: string
-    details?: string
-    risk_factors?: string[]
-    threat_categories?: string[]
-    recommendations?: string[]
-  }
-}
+import { IPData } from "@/app/types/ip"
 
 export function StatisticalSummary({ data }: { data: IPData[] }) {
   const totalIPs = data.length
-
-  // Reputation statistics
+  const uniqueCountries = new Set(data.filter(item => item.ipInfo?.country).map(item => item.ipInfo.country)).size
+  const uniqueISPs = new Set(data.filter(item => item.ipInfo?.isp).map(item => item.ipInfo.isp)).size
+  
   const reputationStats = data.reduce((acc, item) => {
     const status = item.reputation?.status || 'unknown'
     acc[status] = (acc[status] || 0) + 1
@@ -69,6 +51,22 @@ export function StatisticalSummary({ data }: { data: IPData[] }) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{totalIPs}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Unique Countries</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{uniqueCountries}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Unique ISPs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{uniqueISPs}</div>
         </CardContent>
       </Card>
       <Card>

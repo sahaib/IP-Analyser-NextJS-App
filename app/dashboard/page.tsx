@@ -13,23 +13,30 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2 } from 'lucide-react'
 import { useUser } from "@clerk/nextjs"
 import { useState, useEffect } from 'react'
-
-interface IPData {
-  ip: string
-  country: string
-  region: string
-  city: string
-  isp: string
-  org: string
-  as: string
-  lat?: number
-  lon?: number
-}
+import { IPData } from "@/app/types/ip"
 
 interface SavedSearch {
-  timestamp: number
-  ips: string[]
+  id: string
+  userId: string
+  timestamp: string
   results: IPData[]
+}
+
+const transformResults = (data: any[]): IPData[] => {
+  return data.map(item => ({
+    ip: item.ip,
+    ipInfo: {
+      country: item.country || 'Unknown',
+      region: item.region || 'Unknown',
+      city: item.city || 'Unknown',
+      isp: item.isp || 'Unknown',
+      org: item.org || 'Unknown',
+      as: item.as || 'Unknown',
+      lat: item.lat || 0,
+      lon: item.lon || 0
+    },
+    reputation: item.reputation
+  }))
 }
 
 export default function Dashboard() {
@@ -71,8 +78,9 @@ export default function Dashboard() {
 
   const saveSearch = (ips: string[], results: IPData[]) => {
     const newSearch: SavedSearch = {
-      timestamp: Date.now(),
-      ips,
+      id: Date.now().toString(),
+      userId: '',
+      timestamp: Date.now().toString(),
       results
     }
     const updatedSearches = [newSearch, ...searches].slice(0, 10)
@@ -82,6 +90,10 @@ export default function Dashboard() {
 
   const loadPreviousSearch = (results: IPData[]) => {
     setResults(results)
+  }
+
+  const handleResults = (data: any[]) => {
+    setResults(transformResults(data))
   }
 
   if (!isLoaded) {

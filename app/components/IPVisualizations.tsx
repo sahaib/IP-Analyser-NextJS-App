@@ -3,43 +3,25 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer } from "@/components/ui/chart"
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from 'recharts'
-
-interface IPData {
-  ip: string
-  country: string
-  region: string
-  city: string
-  isp: string
-  org: string
-  as: string
-}
+import { IPData } from "@/app/types/ip"
 
 const COLORS = ['#4285f4', '#34a853', '#fbbc05', '#ea4335', '#673ab7']
 
 export function IPVisualizations({ data }: { data: IPData[] }) {
-  const countryDistribution = Object.entries(
-    data.reduce((acc, { country }) => {
-      acc[country] = (acc[country] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-  )
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 5)
+  // Filter out entries with null ipInfo
+  const validData = data.filter(item => item.ipInfo !== null)
 
-  const ispDistribution = Object.entries(
-    data.reduce((acc, { isp }) => {
-      acc[isp] = (acc[isp] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-  )
-    .map(([name, value]) => ({ 
-      name, 
-      value,
-      percentage: Math.round((value / data.length) * 100)
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 5)
+  const countryDistribution = validData.reduce((acc, item) => {
+    const country = item.ipInfo.country
+    acc[country] = (acc[country] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const ispDistribution = validData.reduce((acc, item) => {
+    const isp = item.ipInfo.isp
+    acc[isp] = (acc[isp] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -51,7 +33,10 @@ export function IPVisualizations({ data }: { data: IPData[] }) {
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={countryDistribution}
+                data={Object.entries(countryDistribution)
+                  .map(([name, value]) => ({ name, value }))
+                  .sort((a, b) => b.value - a.value)
+                  .slice(0, 5)}
                 margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                 layout="horizontal"
               >
@@ -89,7 +74,10 @@ export function IPVisualizations({ data }: { data: IPData[] }) {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={ispDistribution}
+                  data={Object.entries(ispDistribution)
+                    .map(([name, value]) => ({ name, value }))
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 5)}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -97,12 +85,16 @@ export function IPVisualizations({ data }: { data: IPData[] }) {
                   paddingAngle={2}
                   dataKey="value"
                 >
-                  {ispDistribution.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
+                  {Object.entries(ispDistribution)
+                    .map(([name, value]) => ({ name, value }))
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 5)
+                    .map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
                 </Pie>
                 <Tooltip
                   formatter={(value, name, entry: any) => [`${entry.payload.percentage}%`, entry.payload.name]}

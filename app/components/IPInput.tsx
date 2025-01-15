@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { isValidIP } from '@/app/utils/ipValidation'
 import { AlertCircle } from 'lucide-react'
+import { IPData } from "@/app/types/ip"
 
-export function IPInput({ onAnalyze }: { onAnalyze: (results: any[]) => void }) {
+export function IPInput({ onAnalyze }: { onAnalyze: (results: IPData[]) => void | Promise<void> }) {
   const [ipList, setIpList] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [invalidIPs, setInvalidIPs] = useState<string[]>([])

@@ -11,20 +11,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-
-interface IPData {
-  ip: string
-  country: string
-  region: string
-  city: string
-  isp: string
-  org: string
-  as: string
-}
+import { IPData } from "@/app/types/ip"
 
 interface SavedSearch {
-  timestamp: number
-  ips: string[]
+  id: string
+  userId: string
+  timestamp: string
   results: IPData[]
 }
 
@@ -38,13 +30,14 @@ export function PreviousSearches({ onLoad }: { onLoad: (results: IPData[]) => vo
     }
   }, [])
 
-  const saveSearch = (ips: string[], results: IPData[]) => {
+  const saveSearch = (results: IPData[]) => {
     const newSearch: SavedSearch = {
-      timestamp: Date.now(),
-      ips,
+      id: Date.now().toString(),
+      userId: '',
+      timestamp: new Date().toISOString(),
       results
     }
-    const updatedSearches = [newSearch, ...searches].slice(0, 10) // Keep only last 10 searches
+    const updatedSearches = [newSearch, ...searches].slice(0, 10)
     setSearches(updatedSearches)
     localStorage.setItem('ip-analyzer-searches', JSON.stringify(updatedSearches))
   }
@@ -65,7 +58,7 @@ export function PreviousSearches({ onLoad }: { onLoad: (results: IPData[]) => vo
           <div className="space-y-4">
             {searches.map((search, index) => (
               <div
-                key={search.timestamp}
+                key={search.id}
                 className="p-4 border rounded-lg cursor-pointer hover:bg-accent"
                 onClick={() => onLoad(search.results)}
               >
@@ -73,7 +66,7 @@ export function PreviousSearches({ onLoad }: { onLoad: (results: IPData[]) => vo
                   {new Date(search.timestamp).toLocaleString()}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {search.ips.length} IP addresses analyzed
+                  {search.results.length} IP addresses analyzed
                 </div>
               </div>
             ))}

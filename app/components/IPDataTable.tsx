@@ -18,124 +18,98 @@ import {
   ColumnFiltersState,
   getFilteredRowModel,
   getPaginationRowModel,
+  Row
 } from "@tanstack/react-table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
-
-interface IPData {
-  ip: string
-  country: string
-  region: string
-  city: string
-  isp: string
-  org: string
-  as: string
-  reputation?: {
-    status: 'clean' | 'suspicious' | 'malicious'
-    confidence_score?: number
-    sources?: string[]
-    last_reported?: string
-    details?: string
-    risk_factors?: string[]
-    threat_categories?: string[]
-    recommendations?: string[]
-  }
-}
-
-const columns: ColumnDef<IPData>[] = [
-  {
-    accessorKey: "ip",
-    header: "IP Address",
-  },
-  {
-    accessorKey: "reputation",
-    header: "Reputation",
-    cell: ({ row }) => {
-      const reputation = row.original.reputation
-      if (!reputation) return <span className="text-muted">Unknown</span>
-
-      const statusColors = {
-        clean: "bg-green-500/20 text-green-700 dark:text-green-400",
-        suspicious: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
-        malicious: "bg-red-500/20 text-red-700 dark:text-red-400"
-      }
-
-      return (
-        <div className="space-y-2">
-          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[reputation.status]}`}>
-            {reputation.status.charAt(0).toUpperCase() + reputation.status.slice(1)}
-            {reputation.confidence_score && ` (${reputation.confidence_score}%)`}
-          </div>
-          {reputation.threat_categories && reputation.threat_categories.length > 0 && (
-            <div className="text-xs text-muted-foreground">
-              Threats: {reputation.threat_categories.join(", ")}
-            </div>
-          )}
-          {reputation.details && (
-            <div className="text-xs text-muted-foreground">
-              {reputation.details}
-            </div>
-          )}
-          <div className="text-xs space-y-1">
-            {reputation.risk_factors && reputation.risk_factors.length > 0 && (
-              <details className="text-xs">
-                <summary className="font-medium cursor-pointer hover:text-accent-foreground">
-                  Risk Factors
-                </summary>
-                <ul className="mt-1 list-disc list-inside">
-                  {reputation.risk_factors.map((factor, i) => (
-                    <li key={i}>{factor}</li>
-                  ))}
-                </ul>
-              </details>
-            )}
-            {reputation.recommendations && reputation.recommendations.length > 0 && (
-              <details className="text-xs">
-                <summary className="font-medium cursor-pointer hover:text-accent-foreground">
-                  Recommendations
-                </summary>
-                <ul className="mt-1 list-disc list-inside">
-                  {reputation.recommendations.map((rec, i) => (
-                    <li key={i}>{rec}</li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </div>
-        </div>
-      )
-    }
-  },
-  {
-    accessorKey: "country",
-    header: "Country",
-  },
-  {
-    accessorKey: "region",
-    header: "Region",
-  },
-  {
-    accessorKey: "city",
-    header: "City",
-  },
-  {
-    accessorKey: "isp",
-    header: "ISP",
-  },
-  {
-    accessorKey: "org",
-    header: "Organization",
-  },
-  {
-    accessorKey: "as",
-    header: "AS",
-  },
-]
+import { IPData } from "@/app/types/ip"
+import { cn } from "@/lib/utils"
+import { Card } from "@/components/ui/card"
 
 export function IPDataTable({ data }: { data: IPData[] }) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+
+  const columns = [
+    {
+      accessorKey: 'ip',
+      header: 'IP Address'
+    },
+    {
+      accessorKey: 'ipInfo.country',
+      header: 'Country'
+    },
+    {
+      accessorKey: 'ipInfo.region',
+      header: 'Region'
+    },
+    {
+      accessorKey: 'ipInfo.city',
+      header: 'City'
+    },
+    {
+      accessorKey: 'ipInfo.isp',
+      header: 'ISP'
+    },
+    {
+      accessorKey: 'ipInfo.org',
+      header: 'Organization'
+    },
+    {
+      accessorKey: 'ipInfo.as',
+      header: 'AS'
+    },
+    {
+      accessorKey: 'reputation',
+      header: 'Reputation',
+      cell: ({ row }: { row: Row<IPData> }) => {
+        const reputation = row.getValue('reputation') as {
+          status?: string;
+          confidence_score?: number;
+          details?: string;
+        } | null
+        
+        if (!reputation) return 'N/A'
+        
+        const getStatusColor = (status?: string) => {
+          switch(status?.toLowerCase()) {
+            case 'clean':
+              return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+            case 'suspicious':
+              return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+            case 'malicious':
+              return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+            default:
+              return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+          }
+        }
+        
+        return (
+          <div className="space-y-2 max-w-sm">
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "px-2.5 py-0.5 rounded-full text-xs font-medium",
+                getStatusColor(reputation.status)
+              )}>
+                {reputation.status || 'Unknown'}
+              </span>
+              {reputation.confidence_score && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                  {reputation.confidence_score}%
+                </span>
+              )}
+            </div>
+            {reputation.details && (
+              <Card className="p-2 text-sm text-muted-foreground bg-muted/50">
+                {reputation.details}
+              </Card>
+            )}
+          </div>
+        )
+      }
+    }
+  ]
 
   const table = useReactTable({
     data,

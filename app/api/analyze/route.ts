@@ -50,19 +50,25 @@ interface IPInfo {
 
 async function getIPInfo(ip: string): Promise<IPInfo | null> {
   try {
-    const response = await axios.get(`${IP_API_ENDPOINT}/${ip}?fields=status,message,country,regionName,city,lat,lon,isp,org,as`);
+    // Using basic endpoint without fields parameter for maximum compatibility
+    const response = await axios.get(`${IP_API_ENDPOINT}/${ip}`);
+    
+    // Add debug logging
+    console.log(`IP API Response for ${ip}:`, response.data);
+    
     if (response.data.status === 'success') {
       return {
-        country: response.data.country || 'N/A',
-        region: response.data.regionName || 'N/A',
-        city: response.data.city || 'N/A',
-        isp: response.data.isp || 'N/A',
-        org: response.data.org || 'N/A',
-        as: response.data.as || 'N/A',
+        country: response.data.country || 'Unknown',
+        region: response.data.regionName || 'Unknown',
+        city: response.data.city || 'Unknown',
+        isp: response.data.isp || 'Unknown',
+        org: response.data.org || 'Unknown',
+        as: response.data.as || 'Unknown',
         lat: response.data.lat,
         lon: response.data.lon
       };
     }
+    console.error(`IP API error for ${ip}:`, response.data);
     return null;
   } catch (error) {
     console.error(`Error getting IP info for ${ip}:`, error);

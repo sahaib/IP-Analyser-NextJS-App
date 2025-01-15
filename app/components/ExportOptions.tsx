@@ -3,23 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Download, Copy, Printer } from 'lucide-react'
 import { useToast } from "@/components/ui/use-toast"
-
-interface IPData {
-  ip: string
-  country: string
-  region: string
-  city: string
-  isp: string
-  org: string
-  as: string
-  reputation?: {
-    status: 'clean' | 'suspicious' | 'malicious'
-    confidence_score?: number
-    sources?: string[]
-    last_reported?: string
-    details?: string
-  }
-}
+import { IPData } from "@/app/types/ip"
 
 export function ExportOptions({ data }: { data: IPData[] }) {
   const { toast } = useToast()
@@ -32,12 +16,17 @@ export function ExportOptions({ data }: { data: IPData[] }) {
       'Last Reported',
       'Sources',
       'Details',
+      'Risk Factors',
+      'Threat Categories',
+      'Recommendations',
       'Country',
       'Region',
       'City',
       'ISP',
       'Organization',
-      'AS'
+      'AS',
+      'Latitude',
+      'Longitude'
     ]
     const csvContent = [
       headers.join(','),
@@ -48,12 +37,17 @@ export function ExportOptions({ data }: { data: IPData[] }) {
         item.reputation?.last_reported || '',
         (item.reputation?.sources || []).join(';'),
         item.reputation?.details || '',
-        item.country,
-        item.region,
-        item.city,
-        item.isp,
-        item.org,
-        item.as
+        (item.reputation?.risk_factors || []).join(';'),
+        (item.reputation?.threat_categories || []).join(';'),
+        (item.reputation?.recommendations || []).join(';'),
+        item.ipInfo?.country || 'Unknown',
+        item.ipInfo?.region || 'Unknown',
+        item.ipInfo?.city || 'Unknown',
+        item.ipInfo?.isp || 'Unknown',
+        item.ipInfo?.org || 'Unknown',
+        item.ipInfo?.as || 'Unknown',
+        item.ipInfo?.lat || '',
+        item.ipInfo?.lon || ''
       ].map(value => `"${value}"`).join(','))
     ].join('\n')
 
@@ -75,7 +69,7 @@ export function ExportOptions({ data }: { data: IPData[] }) {
 
   const copyToClipboard = async () => {
     const text = data.map(item => 
-      `${item.ip}\t${item.reputation?.status || 'unknown'}\t${item.reputation?.confidence_score || ''}\t${item.country}\t${item.region}\t${item.city}\t${item.isp}\t${item.org}\t${item.as}`
+      `${item.ip}\t${item.reputation?.status || 'unknown'}\t${item.reputation?.confidence_score || ''}\t${item.ipInfo?.country || 'Unknown'}\t${item.ipInfo?.region || 'Unknown'}\t${item.ipInfo?.city || 'Unknown'}\t${item.ipInfo?.isp || 'Unknown'}\t${item.ipInfo?.org || 'Unknown'}\t${item.ipInfo?.as || 'Unknown'}`
     ).join('\n')
     
     await navigator.clipboard.writeText(text)
@@ -93,12 +87,17 @@ export function ExportOptions({ data }: { data: IPData[] }) {
           <head>
             <title>IP Analysis Report</title>
             <style>
-              table { border-collapse: collapse; width: 100%; }
+              table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
               th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
               th { background-color: #f5f5f5; }
               .reputation-clean { color: green; }
               .reputation-suspicious { color: orange; }
               .reputation-malicious { color: red; }
+              .details-section { margin-top: 10px; font-size: 0.9em; }
+              .risk-factors, .threat-categories, .recommendations { 
+                margin-top: 5px;
+                padding-left: 20px;
+              }
             </style>
           </head>
           <body>
@@ -108,12 +107,9 @@ export function ExportOptions({ data }: { data: IPData[] }) {
                 <tr>
                   <th>IP Address</th>
                   <th>Reputation</th>
-                  <th>Country</th>
-                  <th>Region</th>
-                  <th>City</th>
-                  <th>ISP</th>
-                  <th>Organization</th>
-                  <th>AS</th>
+                  <th>Location</th>
+                  <th>Network Info</th>
+                  <th>Coordinates</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,16 +117,46 @@ export function ExportOptions({ data }: { data: IPData[] }) {
                   <tr>
                     <td>${item.ip}</td>
                     <td class="reputation-${item.reputation?.status || 'unknown'}">
-                      ${item.reputation?.status || 'Unknown'}
-                      ${item.reputation?.confidence_score ? ` (${item.reputation.confidence_score}%)` : ''}
-                      ${item.reputation?.details ? `<br><small>${item.reputation.details}</small>` : ''}
+                      <strong>${item.reputation?.status || 'Unknown'}</strong>
+                      ${item.reputation?.confidence_score ? `<br>Confidence: ${item.reputation.confidence_score}%` : ''}
+                      ${item.reputation?.details ? `
+                        <div class="details-section">
+                          <div><strong>Details:</strong> ${item.reputation.details}</div>
+                          ${item.reputation.risk_factors?.length ? `
+                            <div class="risk-factors">
+                              <strong>Risk Factors:</strong>
+                              <ul>${item.reputation.risk_factors.map(rf => `<li>${rf}</li>`).join('')}</ul>
+                            </div>
+                          ` : ''}
+                          ${item.reputation.threat_categories?.length ? `
+                            <div class="threat-categories">
+                              <strong>Threat Categories:</strong>
+                              <ul>${item.reputation.threat_categories.map(tc => `<li>${tc}</li>`).join('')}</ul>
+                            </div>
+                          ` : ''}
+                          ${item.reputation.recommendations?.length ? `
+                            <div class="recommendations">
+                              <strong>Recommendations:</strong>
+                              <ul>${item.reputation.recommendations.map(rec => `<li>${rec}</li>`).join('')}</ul>
+                            </div>
+                          ` : ''}
+                        </div>
+                      ` : ''}
                     </td>
-                    <td>${item.country}</td>
-                    <td>${item.region}</td>
-                    <td>${item.city}</td>
-                    <td>${item.isp}</td>
-                    <td>${item.org}</td>
-                    <td>${item.as}</td>
+                    <td>
+                      ${item.ipInfo?.country || 'Unknown'}<br>
+                      ${item.ipInfo?.region || 'Unknown'}<br>
+                      ${item.ipInfo?.city || 'Unknown'}
+                    </td>
+                    <td>
+                      <strong>ISP:</strong> ${item.ipInfo?.isp || 'Unknown'}<br>
+                      <strong>Organization:</strong> ${item.ipInfo?.org || 'Unknown'}<br>
+                      <strong>AS:</strong> ${item.ipInfo?.as || 'Unknown'}
+                    </td>
+                    <td>
+                      ${item.ipInfo?.lat ? `Lat: ${item.ipInfo.lat}` : 'Unknown'}<br>
+                      ${item.ipInfo?.lon ? `Lon: ${item.ipInfo.lon}` : 'Unknown'}
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
