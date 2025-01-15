@@ -244,9 +244,9 @@ export function Hero() {
                 © {new Date().getFullYear()} IP Analyzer. All rights reserved.
               </p>
               <div className="flex items-center space-x-4 mt-4 md:mt-0">
-                <Link href="mailto:support@ipanalyzer.com" className="text-sm text-muted-foreground hover:text-foreground flex items-center">
+                <Link href="mailto:hello@sahaibsingh.com" className="text-sm text-muted-foreground hover:text-foreground flex items-center">
                   <Mail className="h-4 w-4 mr-2" />
-                  support@ipanalyzer.com
+                  hello@sahaibsingh.com
                 </Link>
               </div>
             </div>
