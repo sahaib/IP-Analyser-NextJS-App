@@ -12,24 +12,49 @@ interface IPData {
   isp: string
   org: string
   as: string
+  reputation?: {
+    status: 'clean' | 'suspicious' | 'malicious'
+    confidence_score?: number
+    sources?: string[]
+    last_reported?: string
+    details?: string
+  }
 }
 
 export function ExportOptions({ data }: { data: IPData[] }) {
   const { toast } = useToast()
 
   const exportToCSV = () => {
-    const headers = ['IP Address', 'Country', 'Region', 'City', 'ISP', 'Organization', 'AS']
+    const headers = [
+      'IP Address',
+      'Reputation Status',
+      'Confidence Score',
+      'Last Reported',
+      'Sources',
+      'Details',
+      'Country',
+      'Region',
+      'City',
+      'ISP',
+      'Organization',
+      'AS'
+    ]
     const csvContent = [
       headers.join(','),
       ...data.map(item => [
         item.ip,
+        item.reputation?.status || 'unknown',
+        item.reputation?.confidence_score || '',
+        item.reputation?.last_reported || '',
+        (item.reputation?.sources || []).join(';'),
+        item.reputation?.details || '',
         item.country,
         item.region,
         item.city,
         item.isp,
         item.org,
         item.as
-      ].join(','))
+      ].map(value => `"${value}"`).join(','))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -50,7 +75,7 @@ export function ExportOptions({ data }: { data: IPData[] }) {
 
   const copyToClipboard = async () => {
     const text = data.map(item => 
-      `${item.ip}\t${item.country}\t${item.region}\t${item.city}\t${item.isp}\t${item.org}\t${item.as}`
+      `${item.ip}\t${item.reputation?.status || 'unknown'}\t${item.reputation?.confidence_score || ''}\t${item.country}\t${item.region}\t${item.city}\t${item.isp}\t${item.org}\t${item.as}`
     ).join('\n')
     
     await navigator.clipboard.writeText(text)
@@ -71,6 +96,9 @@ export function ExportOptions({ data }: { data: IPData[] }) {
               table { border-collapse: collapse; width: 100%; }
               th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
               th { background-color: #f5f5f5; }
+              .reputation-clean { color: green; }
+              .reputation-suspicious { color: orange; }
+              .reputation-malicious { color: red; }
             </style>
           </head>
           <body>
@@ -79,6 +107,7 @@ export function ExportOptions({ data }: { data: IPData[] }) {
               <thead>
                 <tr>
                   <th>IP Address</th>
+                  <th>Reputation</th>
                   <th>Country</th>
                   <th>Region</th>
                   <th>City</th>
@@ -91,6 +120,11 @@ export function ExportOptions({ data }: { data: IPData[] }) {
                 ${data.map(item => `
                   <tr>
                     <td>${item.ip}</td>
+                    <td class="reputation-${item.reputation?.status || 'unknown'}">
+                      ${item.reputation?.status || 'Unknown'}
+                      ${item.reputation?.confidence_score ? ` (${item.reputation.confidence_score}%)` : ''}
+                      ${item.reputation?.details ? `<br><small>${item.reputation.details}</small>` : ''}
+                    </td>
                     <td>${item.country}</td>
                     <td>${item.region}</td>
                     <td>${item.city}</td>

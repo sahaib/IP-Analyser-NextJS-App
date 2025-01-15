@@ -11,7 +11,6 @@ import { ExportOptions } from './components/ExportOptions'
 import { PreviousSearches } from './components/PreviousSearches'
 import { Progress } from "@/components/ui/progress"
 import { Toaster } from "@/components/ui/toaster"
-import { WorldMap } from './components/WorldMap'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2 } from 'lucide-react'
 
@@ -118,7 +117,6 @@ export default function Home() {
         {results.length > 0 && (
           <div className="space-y-6">
             <StatisticalSummary data={results} />
-            <WorldMap data={results} />
             <IPVisualizations data={results} />
             <div className="flex justify-end">
               <ExportOptions data={results} />

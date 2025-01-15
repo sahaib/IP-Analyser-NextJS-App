@@ -31,12 +31,81 @@ interface IPData {
   isp: string
   org: string
   as: string
+  reputation?: {
+    status: 'clean' | 'suspicious' | 'malicious'
+    confidence_score?: number
+    sources?: string[]
+    last_reported?: string
+    details?: string
+    risk_factors?: string[]
+    threat_categories?: string[]
+    recommendations?: string[]
+  }
 }
 
 const columns: ColumnDef<IPData>[] = [
   {
     accessorKey: "ip",
     header: "IP Address",
+  },
+  {
+    accessorKey: "reputation",
+    header: "Reputation",
+    cell: ({ row }) => {
+      const reputation = row.original.reputation
+      if (!reputation) return <span className="text-muted">Unknown</span>
+
+      const statusColors = {
+        clean: "bg-green-500/20 text-green-700 dark:text-green-400",
+        suspicious: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
+        malicious: "bg-red-500/20 text-red-700 dark:text-red-400"
+      }
+
+      return (
+        <div className="space-y-2">
+          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[reputation.status]}`}>
+            {reputation.status.charAt(0).toUpperCase() + reputation.status.slice(1)}
+            {reputation.confidence_score && ` (${reputation.confidence_score}%)`}
+          </div>
+          {reputation.threat_categories && reputation.threat_categories.length > 0 && (
+            <div className="text-xs text-muted-foreground">
+              Threats: {reputation.threat_categories.join(", ")}
+            </div>
+          )}
+          {reputation.details && (
+            <div className="text-xs text-muted-foreground">
+              {reputation.details}
+            </div>
+          )}
+          <div className="text-xs space-y-1">
+            {reputation.risk_factors && reputation.risk_factors.length > 0 && (
+              <details className="text-xs">
+                <summary className="font-medium cursor-pointer hover:text-accent-foreground">
+                  Risk Factors
+                </summary>
+                <ul className="mt-1 list-disc list-inside">
+                  {reputation.risk_factors.map((factor, i) => (
+                    <li key={i}>{factor}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            {reputation.recommendations && reputation.recommendations.length > 0 && (
+              <details className="text-xs">
+                <summary className="font-medium cursor-pointer hover:text-accent-foreground">
+                  Recommendations
+                </summary>
+                <ul className="mt-1 list-disc list-inside">
+                  {reputation.recommendations.map((rec, i) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        </div>
+      )
+    }
   },
   {
     accessorKey: "country",
