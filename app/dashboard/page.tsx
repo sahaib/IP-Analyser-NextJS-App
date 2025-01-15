@@ -1,21 +1,18 @@
 "use client"
 
-import { useState, useEffect } from 'react'
-import { Navbar } from './components/Navbar'
-import { Hero } from './components/Hero'
-import { IPInput } from './components/IPInput'
-import { IPDataTable } from './components/IPDataTable'
-import { StatisticalSummary } from './components/StatisticalSummary'
-import { IPVisualizations } from './components/IPVisualizations'
-import { ExportOptions } from './components/ExportOptions'
-import { PreviousSearches } from './components/PreviousSearches'
+import { Navbar } from '@/app/components/Navbar'
+import { IPInput } from '@/app/components/IPInput'
+import { IPDataTable } from '@/app/components/IPDataTable'
+import { StatisticalSummary } from '@/app/components/StatisticalSummary'
+import { IPVisualizations } from '@/app/components/IPVisualizations'
+import { ExportOptions } from '@/app/components/ExportOptions'
+import { PreviousSearches } from '@/app/components/PreviousSearches'
 import { Progress } from "@/components/ui/progress"
 import { Toaster } from "@/components/ui/toaster"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2 } from 'lucide-react'
 import { useUser } from "@clerk/nextjs"
-import { Button } from "@/components/ui/button"
-import { SignInButton } from "@clerk/nextjs"
+import { useState, useEffect } from 'react'
 
 interface IPData {
   ip: string
@@ -35,10 +32,7 @@ interface SavedSearch {
   results: IPData[]
 }
 
-// Cache for IP lookups
-const ipCache = new Map<string, IPData>()
-
-export default function Home() {
+export default function Dashboard() {
   const { isSignedIn, isLoaded } = useUser()
   const [results, setResults] = useState<IPData[]>([])
   const [progress, setProgress] = useState(0)
@@ -55,17 +49,6 @@ export default function Home() {
     }
   }, [])
 
-  const saveSearch = (ips: string[], results: IPData[]) => {
-    const newSearch: SavedSearch = {
-      timestamp: Date.now(),
-      ips,
-      results
-    }
-    const updatedSearches = [newSearch, ...searches].slice(0, 10)
-    setSearches(updatedSearches)
-    localStorage.setItem('ip-analyzer-searches', JSON.stringify(updatedSearches))
-  }
-
   const handleAnalyze = async (analysisResults: IPData[]) => {
     setAnalyzing(true)
     setProgress(0)
@@ -80,15 +63,21 @@ export default function Home() {
       setProgress(Math.round((i + batch.length) / analysisResults.length * 100))
     }
 
-    // Cache the results
-    analysisResults.forEach(result => {
-      ipCache.set(result.ip, result)
-    })
-
     setResults(analysisResults)
     saveSearch(analysisResults.map(r => r.ip), analysisResults)
     setProgress(100)
     setAnalyzing(false)
+  }
+
+  const saveSearch = (ips: string[], results: IPData[]) => {
+    const newSearch: SavedSearch = {
+      timestamp: Date.now(),
+      ips,
+      results
+    }
+    const updatedSearches = [newSearch, ...searches].slice(0, 10)
+    setSearches(updatedSearches)
+    localStorage.setItem('ip-analyzer-searches', JSON.stringify(updatedSearches))
   }
 
   const loadPreviousSearch = (results: IPData[]) => {
@@ -106,22 +95,10 @@ export default function Home() {
     )
   }
 
-  if (!isSignedIn) {
-    return (
-      <div className="min-h-screen flex flex-col dark:bg-background">
-        <Navbar />
-        <main className="flex-grow container mx-auto px-6 py-8">
-          <Hero />
-        </main>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen flex flex-col dark:bg-background">
       <Navbar />
       <main className="flex-grow container mx-auto px-6 py-8">
-        <Hero />
         <div className="mb-6">
           <div className="flex justify-end mb-4">
             <PreviousSearches onLoad={loadPreviousSearch} />
@@ -154,5 +131,4 @@ export default function Home() {
       <Toaster />
     </div>
   )
-}
-
+} 

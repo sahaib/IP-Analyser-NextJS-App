@@ -1,10 +1,39 @@
 import { NextResponse } from 'next/server'
 import axios from 'axios'
 import { isValidIP } from '@/app/utils/ipValidation'
+import { Redis } from '@upstash/redis'
+import { auth } from '@clerk/nextjs/server'
 
 const IP_API_ENDPOINT = 'http://ip-api.com/json'
 const CLAUDE_API_ENDPOINT = 'https://api.anthropic.com/v1/messages'
 const RATE_LIMIT = 1000 // Maximum IPs per request
+const CLAUDE_RATE_LIMIT = 10 // Maximum Claude API calls per minute
+const CLAUDE_WINDOW = 60 // 1 minute window
+
+// Initialize Redis client
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || "",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
+})
+
+async function validateTempToken(userId: string, token: string): Promise<boolean> {
+  const tokenKey = `token:${userId}:${token}`
+  const isValid = await redis.get(tokenKey)
+  if (isValid) {
+    await redis.del(tokenKey) // One-time use token
+    return true
+  }
+  return false
+}
+
+async function checkClaudeRateLimit(userId: string): Promise<boolean> {
+  const key = `claude:${userId}`
+  const count = await redis.incr(key)
+  if (count === 1) {
+    await redis.expire(key, CLAUDE_WINDOW)
+  }
+  return count <= CLAUDE_RATE_LIMIT
+}
 
 async function getIPInfo(ip: string) {
   try {
@@ -28,10 +57,16 @@ async function getIPInfo(ip: string) {
   }
 }
 
-async function analyzeIPWithClaude(ip: string) {
+async function analyzeIPWithClaude(ip: string, userId: string) {
   try {
     if (!process.env.CLAUDE_API_KEY) {
       return null
+    }
+
+    // Check Claude API rate limit
+    const withinLimit = await checkClaudeRateLimit(userId)
+    if (!withinLimit) {
+      throw new Error('Claude API rate limit exceeded')
     }
 
     const prompt = `Analyze the IP address ${ip} for potential security threats and reputation. Consider the following aspects:
@@ -101,6 +136,18 @@ Base your analysis on known threat intelligence sources and security databases. 
 
 export async function POST(req: Request) {
   try {
+    // Get auth session
+    const { userId } = auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Validate temporary token
+    const tempToken = req.headers.get('X-Temp-Token')
+    if (!tempToken || !(await validateTempToken(userId, tempToken))) {
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 403 })
+    }
+
     const { ips } = await req.json()
 
     if (!Array.isArray(ips) || ips.length === 0) {
@@ -131,7 +178,7 @@ export async function POST(req: Request) {
         const ipInfo = await getIPInfo(ip)
         
         // Get reputation info using Claude
-        const reputation = await analyzeIPWithClaude(ip)
+        const reputation = await analyzeIPWithClaude(ip, userId)
 
         if (ipInfo) {
           results.push({
